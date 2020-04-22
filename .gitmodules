@@ -1,0 +1,9 @@
+[submodule "rusty-hermit"]
+	path = rusty-hermit
+	url = git@github.com:jschwe/rusty-hermit.git
+[submodule "rust"]
+	path = rust
+	url = git@github.com:jschwe/rust.git
+[submodule "uhyve"]
+	path = uhyve
+	url = git@github.com:hermitcore/uhyve.git
