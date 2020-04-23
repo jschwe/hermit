@@ -5,7 +5,7 @@ unless Vagrant.has_plugin?("vagrant-disksize")
 	raise Vagrant::Errors::VagrantError.new, "vagrant-disksize plugin is missing. Please install it using 'vagrant plugin install vagrant-disksize' and rerun 'vagrant up'"
 end
 	config.disksize.size = '100GB'
-	#config.ssh.forward_agent = true
+	config.ssh.forward_agent = true
 	config.vm.provider "virtualbox" do |v|
 		v.memory = 8192
 		v.cpus	 = 4
@@ -30,6 +30,7 @@ end
 		cargo install uhyve
 	SCRIPT
 	$init_submodules = <<-SCRIPT
+		echo "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" >> ~/.ssh/known_hosts
 		cd /vagrant
 		git submodule init
 		git submodule update
