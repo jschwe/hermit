@@ -1,0 +1,6 @@
+# Make sure that llvm uses prebuilt binaries
+# This reduces compilation time for rustc by alot
+# This is the config.toml for rustbuild, not cargo
+[target.x86_64-unknown-linux-gnu]
+llvm-config = "/usr/lib/llvm-10/bin/llvm-config"
+
