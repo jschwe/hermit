@@ -6,19 +6,21 @@ unless Vagrant.has_plugin?("vagrant-disksize")
 end
 	config.disksize.size = '100GB'
 	config.ssh.forward_agent = true
+	config.vm.network "forwarded_port", guest: 6677, host: 16677
 	config.vm.provider "virtualbox" do |v|
 		v.memory = 8192
 		v.cpus	 = 4
 		v.customize ["modifyvm", :id, "--nested-hw-virt", "on"]
 	end
-	
+	# libz-dev needed when using prebuilt llvm to build rust
 	$provisionscript = <<-SCRIPT
 		apt-get update && apt-get upgrade -y
-		apt-get install -y git build-essential curl pkg-config libssl-dev 
+		apt-get install -y git build-essential curl pkg-config libssl-dev cmake
 		apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 		apt-get install -y python
 		adduser vagrant libvirt
 		adduser vagrant kvm
+		apt install libz-dev
 		bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 	SCRIPT
 	$rustscript = <<-SCRIPT
@@ -45,12 +47,19 @@ end
 	SCRIPT
 	$build_rustc = <<-SCRIPT
         cd hermit/rust
-        cp /vagrant/config.toml >> ./config.toml
+        cp /vagrant/config.toml ./config.toml
         ./x.py build
         rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
+	echo "Building uhyve from source ..."
+	cd ../uhyve
+	RUSTUP_TOOLCHAIN=stage2 cargo build
+	cd ../rusty-hermit
+	echo "building rusty-hermit demo from source"
+	RUSTUP_TOOLCHAIN=stage2 RUSTFLAGS="-C linker=../rust/build/x86_64-unknown-linux-gnu/stage0/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld" cargo build -Z build-std=std,core,alloc,panic_abort --target x86_64-unknown-hermit
+	echo "Finished provisioning. Login with 'vagrant ssh' and run 'HERMIT_VERBOSE=1 HERMIT_GDB_PORT=6677 ../uhyve/target/debug/uhyve target/x86_64-unknown-hermit/debug/rusty_demo >> /vagrant/vagrant_uhyve_gdb.log' to start the gdb server."
 	SCRIPT
 	config.vm.provision :shell, inline: $provisionscript
-#	config.vm.provision :shell, inline: $rustscript, privileged: false, reset: true
+	config.vm.provision :shell, inline: $rustscript, privileged: false, reset: true
 #	config.vm.provision :shell, inline: $rustyhermit, privileged: false
 	config.vm.provision :shell, inline: $init_submodules, privileged: false
 	config.vm.provision :shell, inline: $build_rustc, privileged: false
