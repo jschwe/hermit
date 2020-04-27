@@ -3,6 +3,8 @@ rust:
     - nightly
 os: linux
 dist: bionic
+git:
+    submodules: false
 before_install:
     - sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
     - sudo apt-get install -y git build-essential curl pkg-config libssl-dev python libz-dev
@@ -13,6 +15,9 @@ before_install:
     - rustup component add llvm-tools-preview
     - cargo install uhyve
     - bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+    # Initalize submodules and replace ssh with https
+    - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
+    - git submodule update --init --recursive
 script:
     - >
         if [ $(egrep -c '(vmx|svm)' /proc/cpuinfo) -eq "0" ]; then
