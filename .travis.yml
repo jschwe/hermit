@@ -11,13 +11,10 @@ addons:
         sources:
         - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main deb-src http://apt.llvm.org/bionic/ llvm-toolchain-bionic-10 main'
           key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-        packages:
-        - clang-10 
-        - lldb-10
-        - lld-10
-        - clangd-10
         update: true
+        dist: bionic
 before_install:
+    - sudo apt-get install -y clang-10 lldb-10 lld-10 clangd-10
     - sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
     - sudo apt-get install -y git build-essential curl pkg-config libssl-dev python libz-dev
     - sudo adduser $USER libvirt
