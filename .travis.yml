@@ -14,7 +14,7 @@ before_install:
     - rustup component add rust-src
     - rustup component add llvm-tools-preview
     - cargo install uhyve
-    - bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+    - sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
     # Initalize submodules and replace ssh with https
     - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
     - git submodule update --init --recursive
