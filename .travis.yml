@@ -1,0 +1,36 @@
+language: rust
+rust:
+    - nightly
+os: linux
+dist: bionic
+before_install:
+    - sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+    - sudo apt-get install -y git build-essential curl pkg-config libssl-dev python libz-dev
+    - sudo adduser $USER libvirt
+    - sudo adduser $USER kvm
+    - cargo install cargo-download
+    - rustup component add rust-src
+    - rustup component add llvm-tools-preview
+    - cargo install uhyve
+    - bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+script:
+    - >
+        if [ $(egrep -c '(vmx|svm)' /proc/cpuinfo) -eq "0" ]; then
+            echo "No virtualization possible - uhyve can't run";
+            exit -1;
+        fi
+    - echo "[target.x86_64-unknown-linux-gnu] \nllvm-config = "/usr/lib/llvm-10/bin/llvm-config" >> rust/config.toml
+    - cargo build -Z build-std=std,core,alloc,panic_abort --target x86_64-unknown-hermit
+    - groups
+    - ls -l /dev/kvm
+    - sudo ls -la /var/run/libvirt/libvirt-sock
+    - cd rust
+    - ./x.py build
+    - rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
+    - cd ../uhyve
+    - RUSTUP_TOOLCHAIN=stage2 cargo build
+    - cd ../rusty-hermit
+    - echo "building rusty-hermit demo from source"
+    - RUSTUP_TOOLCHAIN=stage2 RUSTFLAGS="-C linker=../rust/build/x86_64-unknown-linux-gnu/stage0/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld" cargo build -Z build-std=std,core,alloc,panic_abort --target x86_64-unknown-hermit
+    # used to get terminal with new groups permissions while preserving own user
+    - sudo -E sudo -u $USER -E bash -c "HERMIT_VERBOSE=1 ../uhyve/target/debug/uhyve target/x86_64-unknown-hermit/debug/rusty_demo"
