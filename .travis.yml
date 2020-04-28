@@ -5,7 +5,10 @@ os: linux
 dist: bionic
 git:
     submodules: false
-cache: cargo
+cache: 
+    cargo: true
+    directories:
+        - cached_rust_build # Create new dir, to workaround failing submodule init when caching submodule
 addons:
     apt:
         sources:
@@ -14,7 +17,7 @@ addons:
         update: true
         dist: bionic
 before_install:
-    - sudo apt-get install -y clang-10 lldb-10 lld-10 clangd-10
+    - sudo apt-get install -y clang-10 lldb-10 lld-10 clangd-10 llvm-10-tools
     - sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
     - sudo apt-get install -y git build-essential curl pkg-config libssl-dev python libz-dev
     - sudo adduser $USER libvirt
@@ -22,29 +25,68 @@ before_install:
     - cargo install cargo-download
     - rustup component add rust-src
     - rustup component add llvm-tools-preview
-    - cargo install uhyve
+    #- cargo install uhyve
     # Initalize submodules and replace ssh with https
     - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
+    # Don't do this recursively, so that we don't check out the llvm submodule in rust
     - git submodule update --init
-script:
-    - >
-        if [ $(egrep -c '(vmx|svm)' /proc/cpuinfo) -eq "0" ]; then
-            echo "No virtualization possible - uhyve can't run";
-            exit -1;
-        fi
-        
-    - cd rust
-    # Use prebuilt llvm to speedup build by a lot
-    - printf "[target.x86_64-unknown-linux-gnu]\nllvm-config = \"/usr/lib/llvm-10/bin/llvm-config\"" >> config.toml
-    - ./x.py build
-    - rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
-    - cd ../uhyve
-    - RUSTUP_TOOLCHAIN=stage2 cargo build
-    - cd ../rusty-hermit/libhermit-rs 
-    # Test
-    - RUSTUP_TOOLCHAIN=stage2 RUSTFLAGS="-C linker=../rust/build/x86_64-unknown-linux-gnu/stage0/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld" cargo build -Z build-std=std,core,alloc,panic_abort --target x86_64-unknown-hermit-kernel
-    - cd ..
-    - echo "building rusty-hermit demo from source"
-    - RUSTUP_TOOLCHAIN=stage2 RUSTFLAGS="-C linker=../rust/build/x86_64-unknown-linux-gnu/stage0/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld" cargo build -Z build-std=std,core,alloc,panic_abort --target x86_64-unknown-hermit
-    # used to get terminal with new groups permissions while preserving own user
-    - sudo -E sudo -u $USER -E bash -c "HERMIT_VERBOSE=1 ../uhyve/target/debug/uhyve target/x86_64-unknown-hermit/debug/rusty_demo"
+stages:
+    - build_rust_compiler
+    - build_apps
+jobs:
+    include: 
+        - stage: build_rust_compiler
+          script:
+            - >
+                if [ $(egrep -c '(vmx|svm)' /proc/cpuinfo) -eq "0" ]; then
+                    echo "No virtualization possible - uhyve can't run";
+                    exit -1;
+                fi
+            - cd rust
+            - CURRENT_COMMIT_ID=$(git rev-parse HEAD)
+            # Use prebuilt llvm to speedup build by a lot
+            - printf "[target.x86_64-unknown-linux-gnu]\nllvm-config = \"/usr/lib/llvm-10/bin/llvm-config\"" > config.toml
+            # Use nightly cargo, rustc and rustfmt to speedup build. Note this does not work!
+            # - printf "\n\n[build]\ncargo = \"$HOME/.cargo/bin/cargo\"\nrustc = \"$HOME/.cargo/bin/rustc\"\nrustfmt = \"$HOME/.cargo/bin/rustfmt\"\n" >> config.toml
+            - >
+                if [ -f "../cached_rust_build/cached_rust_build_commit_id" ] && [ "$(cat ../cached_rust_build/cached_rust_build_commit_id)" == "$CURRENT_COMMIT_ID" ]; then
+                    echo "Cached rust build found";
+                else
+                    echo "Building rust compiler from source";
+                    ./x.py build;
+                    if [ $? -eq 0 ]; then
+                        mkdir -p ../cached_rust_build;
+                        rm -r ../cached_rust_build/*;
+                        mv build/* ../cached_rust_build/;
+                        echo "$CURRENT_COMMIT_ID" > ../cached_rust_build/cached_rust_build_commit_id;
+                        ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/;
+                        ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/;
+                        ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/stdarch/crates/core_arch/src/;
+                    fi      
+                fi
+                
+                                
+        - stage: build_apps
+          script:
+            - cd rust
+            - echo "Current Commit ID $(git rev-parse HEAD)"
+            - echo "Rustbuild cached commit ID $(cat ../cached_rust_build/cached_rust_build_commit_id)"
+            - mkdir build
+            - cp -r ../cached_rust_build/* build/
+            - rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
+            #debug:
+            - ls -l /home/travis/build/jschwe/hermit/rust/
+            - ls -l /home/travis/build/jschwe/hermit/rust/build
+            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/
+            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/
+            - ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/
+            - ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/stdarch/crates/core_arch/src/
+            #end debug        
+            - cd ../uhyve
+            - RUSTUP_TOOLCHAIN=stage2 cargo build
+            - cd ../rusty-hermit
+            - git submodule update --init
+            - echo "building rusty-hermit demo from source"
+            - RUSTUP_TOOLCHAIN=stage2 RUSTFLAGS="-C linker=../rust/build/x86_64-unknown-linux-gnu/stage0/lib/rustlib/x86_64-unknown-linux-gnu/bin/rust-lld" cargo build -Z build-std=std,core,alloc,panic_abort --target x86_64-unknown-hermit
+            # used to get terminal with new groups permissions while preserving own user
+            - sudo -E sudo -u $USER -E bash -c "HERMIT_VERBOSE=1 ../uhyve/target/debug/uhyve target/x86_64-unknown-hermit/debug/rusty_demo"
