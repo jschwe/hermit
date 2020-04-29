@@ -1,0 +1,21 @@
+[submodule "src/rust-installer"]
+	path = src/tools/rust-installer
+	url = https://github.com/rust-lang/rust-installer.git
+[submodule "src/tools/cargo"]
+	path = src/tools/cargo
+	url = https://github.com/rust-lang/cargo.git
+[submodule "src/tools/rls"]
+	path = src/tools/rls
+	url = https://github.com/rust-lang/rls.git
+[submodule "src/tools/clippy"]
+	path = src/tools/clippy
+	url = https://github.com/rust-lang/rust-clippy.git
+[submodule "src/tools/rustfmt"]
+	path = src/tools/rustfmt
+	url = https://github.com/rust-lang/rustfmt.git
+[submodule "src/tools/miri"]
+	path = src/tools/miri
+	url = https://github.com/rust-lang/miri.git
+[submodule "src/stdarch"]
+	path = src/stdarch
+	url = https://github.com/rust-lang/stdarch.git
