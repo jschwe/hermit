@@ -9,7 +9,6 @@ cache:
     cargo: true
     directories:
         - cached_rust_build # Create new dir, to workaround failing submodule init when caching submodule
-        # Note this is not portable as the directory contains hardlinks
 addons:
     apt:
         sources:
@@ -49,6 +48,8 @@ jobs:
             - printf "[target.x86_64-unknown-linux-gnu]\nllvm-config = \"/usr/lib/llvm-10/bin/llvm-config\"" > config.toml
             # Use nightly cargo, rustc and rustfmt to speedup build. Note this does not work!
             # - printf "\n\n[build]\ncargo = \"$HOME/.cargo/bin/cargo\"\nrustc = \"$HOME/.cargo/bin/rustc\"\nrustfmt = \"$HOME/.cargo/bin/rustfmt\"\n" >> config.toml
+            # Only build the compiler if the rust submodule was updated
+            # IF the build was successfull cache the build, resolving any symlinks
             - >
                 if [ -f "../cached_rust_build/cached_rust_build_commit_id" ] && [ "$(cat ../cached_rust_build/cached_rust_build_commit_id)" == "$CURRENT_COMMIT_ID" ]; then
                     echo "Cached rust build found";
@@ -59,10 +60,7 @@ jobs:
                     ./x.py build;
                     if [ $? -eq 0 ]; then
                         cp -r -L build/* ../cached_rust_build/;
-                        echo "$CURRENT_COMMIT_ID" > ../cached_rust_build/cached_rust_build_commit_id;
-                        ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/;
-                        ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/;
-                        ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/stdarch/crates/core_arch/src/;
+                        echo "$CURRENT_COMMIT_ID" > ../cached_rust_build/cached_rust_build_commit_id; 
                     fi      
                 fi
                 
@@ -72,23 +70,9 @@ jobs:
             - cd rust
             - echo "Current Commit ID $(git rev-parse HEAD)"
             - echo "Rustbuild cached commit ID $(cat ../cached_rust_build/cached_rust_build_commit_id)"
-            - git submodule update --init
             - mkdir build
             - cp -r ../cached_rust_build/* build/
             - rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
-            #debug:
-            - ls -l /home/travis/build/jschwe/hermit/rust/
-            - ls -l /home/travis/build/jschwe/hermit/rust/build
-            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/
-            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/
-            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/
-            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/
-            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/
-            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/
-            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/
-            - ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/
-            - ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/stdarch/crates/core_arch/src/
-            #end debug        
             - cd ../uhyve
             - RUSTUP_TOOLCHAIN=stage2 cargo build
             - cd ../rusty-hermit
