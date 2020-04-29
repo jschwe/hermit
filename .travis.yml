@@ -53,10 +53,10 @@ jobs:
                     echo "Cached rust build found";
                 else
                     echo "Building rust compiler from source";
+                    mkdir -p ../cached_rust_build;
+                    rm -r -f ../cached_rust_build/*;
                     ./x.py build;
                     if [ $? -eq 0 ]; then
-                        mkdir -p ../cached_rust_build;
-                        rm -r ../cached_rust_build/*;
                         mv build/* ../cached_rust_build/;
                         echo "$CURRENT_COMMIT_ID" > ../cached_rust_build/cached_rust_build_commit_id;
                         ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/;
@@ -78,6 +78,11 @@ jobs:
             - ls -l /home/travis/build/jschwe/hermit/rust/
             - ls -l /home/travis/build/jschwe/hermit/rust/build
             - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/
+            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/
+            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/
+            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/
+            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/
+            - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/
             - ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/
             - ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/
             - ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/stdarch/crates/core_arch/src/
