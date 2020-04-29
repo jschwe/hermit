@@ -9,6 +9,7 @@ cache:
     cargo: true
     directories:
         - cached_rust_build # Create new dir, to workaround failing submodule init when caching submodule
+        # Note this is not portable as the directory contains hardlinks
 addons:
     apt:
         sources:
@@ -57,7 +58,7 @@ jobs:
                     rm -r -f ../cached_rust_build/*;
                     ./x.py build;
                     if [ $? -eq 0 ]; then
-                        mv build/* ../cached_rust_build/;
+                        cp -r -L build/* ../cached_rust_build/;
                         echo "$CURRENT_COMMIT_ID" > ../cached_rust_build/cached_rust_build_commit_id;
                         ls -l /home/travis/build/jschwe/hermit/rust/build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/;
                         ls -l /home/travis/build/jschwe/hermit/cached_rust_build/x86_64-unknown-linux-gnu/stage2/lib/rustlib/src/rust/src/libcore/../stdarch/crates/core_arch/src/;
@@ -71,6 +72,7 @@ jobs:
             - cd rust
             - echo "Current Commit ID $(git rev-parse HEAD)"
             - echo "Rustbuild cached commit ID $(cat ../cached_rust_build/cached_rust_build_commit_id)"
+            - git submodule update --init
             - mkdir build
             - cp -r ../cached_rust_build/* build/
             - rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
