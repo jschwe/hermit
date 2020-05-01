@@ -15,7 +15,7 @@ end
 	# libz-dev needed when using prebuilt llvm to build rust
 	$provisionscript = <<-SCRIPT
 		apt-get update && apt-get upgrade -y
-		apt-get install -y git build-essential curl pkg-config libssl-dev cmake
+		apt-get install -y git build-essential curl pkg-config libssl-dev cmake gdb
 		apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
 		apt-get install -y python
 		adduser vagrant libvirt
@@ -35,10 +35,13 @@ end
 	SCRIPT
 	$init_submodules = <<-SCRIPT
 		echo "github.com ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==" >> ~/.ssh/known_hosts
-		git clone git@github.com:jschwe/hermit.git
-		cd hermit
-		git submodule init
-		git submodule update
+		cd /vagrant
+		git clone git@github.com:jschwe/hermit.git vagrant_hermit
+		cd vagrant_hermit
+		git submodule update --init
+		cd rusty-hermit
+		#git checkout origin/local/fixes
+		git submodule update --init
 	SCRIPT
 	$check_nested_virtualization = <<-SCRIPT
 		egrep -c '(vmx|svm)' /proc/cpuinfo
@@ -46,7 +49,7 @@ end
 		ls -l /dev/kvm
 	SCRIPT
 	$build_rustc = <<-SCRIPT
-        cd hermit/rust
+        cd /vagrant/vagrant_hermit/rust
         cp /vagrant/config.toml ./config.toml
         ./x.py build
         rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
@@ -60,7 +63,7 @@ end
 	SCRIPT
 	config.vm.provision :shell, inline: $provisionscript
 	config.vm.provision :shell, inline: $rustscript, privileged: false, reset: true
-#	config.vm.provision :shell, inline: $rustyhermit, privileged: false
+	config.vm.provision :shell, inline: $rustyhermit, privileged: false
 	config.vm.provision :shell, inline: $init_submodules, privileged: false
 	config.vm.provision :shell, inline: $build_rustc, privileged: false
 	config.vm.provision :shell, inline: $check_nested_virtualization, privileged: true
