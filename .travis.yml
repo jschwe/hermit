@@ -31,38 +31,38 @@ before_install:
     # Don't do this recursively, so that we don't check out the llvm submodule in rust
     - git submodule update --init
 stages:
-    - build_rust_compiler
+    #- build_rust_compiler
     - build_apps
 jobs:
     include: 
-        - stage: build_rust_compiler
-          script:
-            - >
-                if [ $(egrep -c '(vmx|svm)' /proc/cpuinfo) -eq "0" ]; then
-                    echo "No virtualization possible - uhyve can't run";
-                    exit -1;
-                fi
-            - cd rust
-            - CURRENT_COMMIT_ID=$(git rev-parse HEAD)
-            # Use prebuilt llvm to speedup build by a lot
-            - printf "[target.x86_64-unknown-linux-gnu]\nllvm-config = \"/usr/lib/llvm-10/bin/llvm-config\"" > config.toml
-            # Use nightly cargo, rustc and rustfmt to speedup build. Note this does not work!
-            # - printf "\n\n[build]\ncargo = \"$HOME/.cargo/bin/cargo\"\nrustc = \"$HOME/.cargo/bin/rustc\"\nrustfmt = \"$HOME/.cargo/bin/rustfmt\"\n" >> config.toml
-            # Only build the compiler if the rust submodule was updated
-            # IF the build was successfull cache the build, resolving any symlinks
-            - >
-                if [ -f "../cached_rust_build/cached_rust_build_commit_id" ] && [ "$(cat ../cached_rust_build/cached_rust_build_commit_id)" == "$CURRENT_COMMIT_ID" ]; then
-                    echo "Cached rust build found";
-                else
-                    echo "Building rust compiler from source";
-                    mkdir -p ../cached_rust_build;
-                    rm -r -f ../cached_rust_build/*;
-                    ./x.py build;
-                    if [ $? -eq 0 ]; then
-                        cp -r -L build/* ../cached_rust_build/;
-                        echo "$CURRENT_COMMIT_ID" > ../cached_rust_build/cached_rust_build_commit_id; 
-                    fi      
-                fi
+#        - stage: build_rust_compiler
+#          script:
+#            - >
+#                if [ $(egrep -c '(vmx|svm)' /proc/cpuinfo) -eq "0" ]; then
+#                    echo "No virtualization possible - uhyve can't run";
+#                    exit -1;
+#                fi
+#            - cd rust
+#            - CURRENT_COMMIT_ID=$(git rev-parse HEAD)
+#            # Use prebuilt llvm to speedup build by a lot
+#            - printf "[target.x86_64-unknown-linux-gnu]\nllvm-config = \"/usr/lib/llvm-10/bin/llvm-config\"" > config.toml
+#            # Use nightly cargo, rustc and rustfmt to speedup build. Note this does not work!
+#            # - printf "\n\n[build]\ncargo = \"$HOME/.cargo/bin/cargo\"\nrustc = \"$HOME/.cargo/bin/rustc\"\nrustfmt = \"$HOME/.cargo/bin/rustfmt\"\n" >> config.toml
+#            # Only build the compiler if the rust submodule was updated
+#            # IF the build was successfull cache the build, resolving any symlinks
+#            - >
+#                if [ -f "../cached_rust_build/cached_rust_build_commit_id" ] && [ "$(cat ../cached_rust_build/cached_rust_build_commit_id)" == "$CURRENT_COMMIT_ID" ]; then
+#                    echo "Cached rust build found";
+#                else
+#                    echo "Building rust compiler from source";
+#                    mkdir -p ../cached_rust_build;
+#                    rm -r -f ../cached_rust_build/*;
+#                    ./x.py build;
+#                    if [ $? -eq 0 ]; then
+#                        cp -r -L build/* ../cached_rust_build/;
+#                        echo "$CURRENT_COMMIT_ID" > ../cached_rust_build/cached_rust_build_commit_id;
+#                    fi
+#                fi
                 
                                 
         - stage: build_apps
